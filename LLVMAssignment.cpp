@@ -2,7 +2,7 @@
  * @Author: Chendong Yu 
  * @Date: 2019-11-08 16:05:57 
  * @Last Modified by: Chendong Yu
- * @Last Modified time: 2019-11-08 16:08:02
+ * @Last Modified time: 2019-11-08 17:09:06
  */
 //===- Hello.cpp - Example code from "Writing an LLVM Pass" ---------------===//
 //
@@ -74,33 +74,51 @@ char EnableFunctionOptPass::ID = 0;
 ///Updated 11/10/2017 by fargo: make all functions
 ///processed by mem2reg before this pass.
 struct FuncPtrPass : public ModulePass
-{ 
+{
   static char ID; // Pass identification, replacement for typeid
-  FuncPtrPass() : ModulePass(ID) {} 
+  FuncPtrPass() : ModulePass(ID) {}
 
-  std::map<int,std::vector<std::string>> result;
-  
+  std::map<int, std::vector<std::string>> result;
+  std::vector<std::string> funcNames;
   bool runOnModule(Module &M) override
   {
     errs() << "Hello: ";
     errs().write_escaped(M.getName()) << '\n';
     //M.dump();
-    //M.print(llvm::errs(), nullptr);
-    //errs() << "------------------------------\n";
+    M.print(llvm::errs(), nullptr);
+    errs() << "------------------------------\n";
     //for function in Module
-    for(Module::iterator fi = M.begin(),fe = M.end();fi!=fe;fi++){
-        // for basicblock in function
-        for(Function::iterator bi = fi->begin(),be = fi->end();bi!=be;bi++){
-            // for instruction in basicblock
-            for(BasicBlock::iterator ii = bi->begin(),ie = bi->end();ii!=ie;ii++){
-                Instruction* inst = dyn_cast<Instruction>(ii);
-                if(CallInst* callInst = dyn_cast<CallInst>(inst)){
-                  // callinst
-                    int line = callInst-> getDebugLoc().getLine();
-                    errs()<< "line:"<<line<<"\n";
-                }
+    for (Module::iterator fi = M.begin(), fe = M.end(); fi != fe; fi++)
+    {
+      // for basicblock in function
+      for (Function::iterator bi = fi->begin(), be = fi->end(); bi != be; bi++)
+      {
+        // for instruction in basicblock
+        for (BasicBlock::iterator ii = bi->begin(), ie = bi->end(); ii != ie; ii++)
+        {
+          Instruction *inst = dyn_cast<Instruction>(ii);
+          if (CallInst *callInst = dyn_cast<CallInst>(inst))
+          {
+            // callinst
+            Function *func = callInst->getCalledFunction();
+            if (func)
+            { // calledFunction exits
+              int line = callInst->getDebugLoc().getLine();
+              /*
+              line:1	llvm.dbg.value
+              */
+              std::string funcname = func->getName();
+              if (!(funcname == std::string("llvm.dbg.value")))
+              {
+                errs() << "line:" << line << "\t" << func->getName() << "\n";
+              }
             }
+            else
+            { //calledFunction doesn't exits
+            }
+          }
         }
+      }
     }
     return false;
   }
