@@ -1,3 +1,9 @@
+/*
+ * @Author: Chendong Yu 
+ * @Date: 2019-11-08 16:05:57 
+ * @Last Modified by: Chendong Yu
+ * @Last Modified time: 2019-11-08 16:08:02
+ */
 //===- Hello.cpp - Example code from "Writing an LLVM Pass" ---------------===//
 //
 //                     The LLVM Compiler Infrastructure
@@ -14,17 +20,23 @@
 
 #include <llvm/Support/CommandLine.h>
 #include <llvm/IRReader/IRReader.h>
-#include <llvm/IR/LLVMContext.h>
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/Support/ToolOutputFile.h>
-
 #include <llvm/Transforms/Scalar.h>
-
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/BasicBlock.h>
 #include <llvm/IR/Function.h>
+#include <llvm/IR/Instruction.h>
+#include <llvm/IR/Instructions.h>
 #include <llvm/Pass.h>
+
 #include <llvm/Support/raw_ostream.h>
 
+#include <vector>
+#include <set>
+#include <map>
+#include <string>
 #if LLVM_VERSION_MAJOR >= 4
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
@@ -62,17 +74,34 @@ char EnableFunctionOptPass::ID = 0;
 ///Updated 11/10/2017 by fargo: make all functions
 ///processed by mem2reg before this pass.
 struct FuncPtrPass : public ModulePass
-{
+{ 
   static char ID; // Pass identification, replacement for typeid
-  FuncPtrPass() : ModulePass(ID) {}
+  FuncPtrPass() : ModulePass(ID) {} 
 
+  std::map<int,std::vector<std::string>> result;
+  
   bool runOnModule(Module &M) override
   {
     errs() << "Hello: ";
     errs().write_escaped(M.getName()) << '\n';
-//    M.dump();
-    M.print(llvm::errs(), nullptr);
-    errs() << "------------------------------\n";
+    //M.dump();
+    //M.print(llvm::errs(), nullptr);
+    //errs() << "------------------------------\n";
+    //for function in Module
+    for(Module::iterator fi = M.begin(),fe = M.end();fi!=fe;fi++){
+        // for basicblock in function
+        for(Function::iterator bi = fi->begin(),be = fi->end();bi!=be;bi++){
+            // for instruction in basicblock
+            for(BasicBlock::iterator ii = bi->begin(),ie = bi->end();ii!=ie;ii++){
+                Instruction* inst = dyn_cast<Instruction>(ii);
+                if(CallInst* callInst = dyn_cast<CallInst>(inst)){
+                  // callinst
+                    int line = callInst-> getDebugLoc().getLine();
+                    errs()<< "line:"<<line<<"\n";
+                }
+            }
+        }
+    }
     return false;
   }
 };
