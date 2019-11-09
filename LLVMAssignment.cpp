@@ -2,7 +2,7 @@
  * @Author: Chendong Yu 
  * @Date: 2019-11-08 16:05:57 
  * @Last Modified by: Chendong Yu
- * @Last Modified time: 2019-11-09 15:13:00
+ * @Last Modified time: 2019-11-09 15:26:32
  */
 //===- Hello.cpp - Example code from "Writing an LLVM Pass" ---------------===//
 //
@@ -161,6 +161,9 @@ struct FuncPtrPass : public ModulePass
             errs() << "here3"
                    << "\n";
             Push(func->getName());
+          }else if(Argument *argument = dyn_cast<Argument>(value)){
+            errs() << "here4" << "\n";
+            HandleArgument(argument);
           }
         }
       }
