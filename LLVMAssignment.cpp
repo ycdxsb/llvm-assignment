@@ -2,7 +2,7 @@
  * @Author: Chendong Yu 
  * @Date: 2019-11-08 16:05:57 
  * @Last Modified by: Chendong Yu
- * @Last Modified time: 2019-11-09 15:26:32
+ * @Last Modified time: 2019-11-09 15:31:20
  */
 //===- Hello.cpp - Example code from "Writing an LLVM Pass" ---------------===//
 //
@@ -211,8 +211,8 @@ struct FuncPtrPass : public ModulePass
     errs() << "Hello: ";
     errs().write_escaped(M.getName()) << '\n';
     //M.dump();
-    M.print(llvm::errs(), nullptr);
-    errs() << "------------------------------\n";
+    //M.print(llvm::errs(), nullptr);
+    //errs() << "------------------------------\n";
     //for function in Module
     for (Module::iterator fi = M.begin(), fe = M.end(); fi != fe; fi++)
     {
