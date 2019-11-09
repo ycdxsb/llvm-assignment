@@ -2,7 +2,7 @@
  * @Author: Chendong Yu 
  * @Date: 2019-11-08 16:05:57 
  * @Last Modified by: Chendong Yu
- * @Last Modified time: 2019-11-09 15:31:20
+ * @Last Modified time: 2019-11-09 16:11:41
  */
 //===- Hello.cpp - Example code from "Writing an LLVM Pass" ---------------===//
 //
@@ -170,11 +170,12 @@ struct FuncPtrPass : public ModulePass
     }
   }
 
-  void HandleCallInst(CallInst *callInst)
+  void GetResult(CallInst *callInst)
   {
     // callinst
     Function *func = callInst->getCalledFunction();
     int line = callInst->getDebugLoc().getLine();
+    errs()<<"lines:"<<line<<"\n";
     funcNames.clear();
     if (func)
     { // calledFunction exits
@@ -198,9 +199,9 @@ struct FuncPtrPass : public ModulePass
       }
       else if (Argument *argument = dyn_cast<Argument>(value))
       {
-        errs() << "I am in"
-               << "\n";
         HandleArgument(argument);
+      }else if(CallInst *callInst = dyn_cast<CallInst>(value)){
+        errs()<<"I am in"<< "\n";
       }
       results.insert(std::pair<int, std::vector<std::string>>(line, funcNames));
     }
@@ -225,7 +226,7 @@ struct FuncPtrPass : public ModulePass
           Instruction *inst = dyn_cast<Instruction>(ii);
           if (CallInst *callInst = dyn_cast<CallInst>(inst))
           {
-            HandleCallInst(callInst);
+            GetResult(callInst);
           }
         }
       }
