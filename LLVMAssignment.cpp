@@ -2,7 +2,7 @@
  * @Author: Chendong Yu 
  * @Date: 2019-11-08 16:05:57 
  * @Last Modified by: Chendong Yu
- * @Last Modified time: 2019-11-09 12:22:22
+ * @Last Modified time: 2019-11-09 12:58:54
  */
 //===- Hello.cpp - Example code from "Writing an LLVM Pass" ---------------===//
 //
@@ -37,7 +37,7 @@
 #include <set>
 #include <map>
 #include <string>
-#include <iostream>
+#include <algorithm>
 #if LLVM_VERSION_MAJOR >= 4
 #include <llvm/Bitcode/BitcodeReader.h>
 #include <llvm/Bitcode/BitcodeWriter.h>
@@ -82,28 +82,47 @@ struct FuncPtrPass : public ModulePass
   std::map<int, std::vector<std::string>> results;
   std::vector<std::string> funcNames;
 
+  void Push(std::string funcname){
+      if(find(funcNames.begin(),funcNames.end(),funcname)==funcNames.end()){
+        funcNames.push_back(funcname);
+      }
+  }
+
+  void HandlePHINode(PHINode* phiNode){
+    for(Value* value:phiNode->incoming_values()){
+      if(auto func = dyn_cast<Function>(value)){
+         Push(func->getName());
+      }
+    }
+  }
+
   void HandleCallInst(CallInst* callInst)
   {
     // callinst
     Function *func = callInst->getCalledFunction();
+    int line = callInst->getDebugLoc().getLine();
+    funcNames.clear();
     if (func)
     { // calledFunction exits
-      int line = callInst->getDebugLoc().getLine();
       /*
       line:1	llvm.dbg.value
       */
       std::string funcname = func->getName();
       if (!(funcname == std::string("llvm.dbg.value")))
       {
-        std::vector<std::string> funcnames;
-        funcnames.push_back(funcname);
-        results.insert(std::pair<int,std::vector<std::string>>(line,funcnames));
+        Push(funcname);
+        results.insert(std::pair<int,std::vector<std::string>>(line,funcNames));
         errs() << "line:" << line << "\t" << func->getName() << "\n";
       }
     }
     else
     { //calledFunction doesn't exits
-
+        /// Return the value actually being called or invoked.
+        Value* value =  callInst->getCalledValue();
+        if(PHINode* phiNode = dyn_cast<PHINode>(value)){
+          HandlePHINode(phiNode);
+        }
+        results.insert(std::pair<int,std::vector<std::string>>(line,funcNames));
     }
   }
 
