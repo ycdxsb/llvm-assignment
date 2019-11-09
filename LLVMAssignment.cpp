@@ -2,7 +2,7 @@
  * @Author: Chendong Yu 
  * @Date: 2019-11-08 16:05:57 
  * @Last Modified by: Chendong Yu
- * @Last Modified time: 2019-11-09 13:04:16
+ * @Last Modified time: 2019-11-09 15:13:00
  */
 //===- Hello.cpp - Example code from "Writing an LLVM Pass" ---------------===//
 //
@@ -29,6 +29,8 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Instruction.h>
 #include <llvm/IR/Instructions.h>
+#include <llvm/IR/Argument.h>
+#include <llvm/IR/User.h>
 #include <llvm/Pass.h>
 
 #include <llvm/Support/raw_ostream.h>
@@ -82,6 +84,23 @@ struct FuncPtrPass : public ModulePass
   std::map<int, std::vector<std::string>> results;
   std::vector<std::string> funcNames;
 
+  void PrintResult()
+  {
+    for (auto ii = results.begin(), ie = results.end(); ii != ie; ii++)
+    {
+      if (ii->second.size() == 0)
+      {
+        continue;
+      }
+      errs() << ii->first << " : ";
+      for (auto ji = ii->second.begin(), je = ii->second.end() - 1; ji != je; ji++)
+      {
+        errs() << *ji << ", ";
+      }
+      errs() << *(ii->second.end() - 1) << "\n";
+    }
+  }
+
   void Push(std::string funcname)
   {
     if (find(funcNames.begin(), funcNames.end(), funcname) == funcNames.end())
@@ -101,6 +120,49 @@ struct FuncPtrPass : public ModulePass
       else if (auto phiNode = dyn_cast<PHINode>(value))
       {
         HandlePHINode(phiNode);
+      }
+      else if (auto argument = dyn_cast<Argument>(value))
+      {
+        HandleArgument(argument);
+      }
+    }
+  }
+
+  void HandleArgument(Argument *argument)
+  {
+    unsigned int arg_index = argument->getArgNo();
+    Function *funcParent = argument->getParent();
+    errs() << funcParent->getName() << "\n";
+    for (User *user : funcParent->users())
+    {
+      if (CallInst *callInst = dyn_cast<CallInst>(user))
+      {
+        // if argument at 3 , then foo(arg1,arg2) will be pass
+        if (arg_index + 1 <= callInst->getNumArgOperands())
+        {
+          errs() << "here"
+                 << "\n";
+          Value *value = callInst->getArgOperand(arg_index);
+          if (callInst->getCalledFunction() != funcParent)
+          { // 递归问题
+            Function *func = callInst->getCalledFunction();
+
+            errs() << "here1"
+                   << "\n";
+          }
+          else if (PHINode *phiNode = dyn_cast<PHINode>(value))
+          {
+            errs() << "here2"
+                   << "\n";
+            HandlePHINode(phiNode);
+          }
+          else if (Function *func = dyn_cast<Function>(value))
+          {
+            errs() << "here3"
+                   << "\n";
+            Push(func->getName());
+          }
+        }
       }
     }
   }
@@ -131,20 +193,13 @@ struct FuncPtrPass : public ModulePass
       {
         HandlePHINode(phiNode);
       }
-      results.insert(std::pair<int, std::vector<std::string>>(line, funcNames));
-    }
-  }
-
-  void PrintResult()
-  {
-    for (auto ii = results.begin(), ie = results.end(); ii != ie; ii++)
-    {
-      errs() << ii->first << " : ";
-      for (auto ji = ii->second.begin(), je = ii->second.end() - 1; ji != je; ji++)
+      else if (Argument *argument = dyn_cast<Argument>(value))
       {
-        errs() << *ji << ", ";
+        errs() << "I am in"
+               << "\n";
+        HandleArgument(argument);
       }
-      errs() << *(ii->second.end() - 1) << "\n";
+      results.insert(std::pair<int, std::vector<std::string>>(line, funcNames));
     }
   }
 
