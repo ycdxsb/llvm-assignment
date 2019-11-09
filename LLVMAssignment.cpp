@@ -2,7 +2,7 @@
  * @Author: Chendong Yu 
  * @Date: 2019-11-08 16:05:57 
  * @Last Modified by: Chendong Yu
- * @Last Modified time: 2019-11-09 12:58:54
+ * @Last Modified time: 2019-11-09 13:04:16
  */
 //===- Hello.cpp - Example code from "Writing an LLVM Pass" ---------------===//
 //
@@ -82,21 +82,30 @@ struct FuncPtrPass : public ModulePass
   std::map<int, std::vector<std::string>> results;
   std::vector<std::string> funcNames;
 
-  void Push(std::string funcname){
-      if(find(funcNames.begin(),funcNames.end(),funcname)==funcNames.end()){
-        funcNames.push_back(funcname);
-      }
+  void Push(std::string funcname)
+  {
+    if (find(funcNames.begin(), funcNames.end(), funcname) == funcNames.end())
+    {
+      funcNames.push_back(funcname);
+    }
   }
 
-  void HandlePHINode(PHINode* phiNode){
-    for(Value* value:phiNode->incoming_values()){
-      if(auto func = dyn_cast<Function>(value)){
-         Push(func->getName());
+  void HandlePHINode(PHINode *phiNode)
+  {
+    for (Value *value : phiNode->incoming_values())
+    {
+      if (auto func = dyn_cast<Function>(value))
+      {
+        Push(func->getName());
+      }
+      else if (auto phiNode = dyn_cast<PHINode>(value))
+      {
+        HandlePHINode(phiNode);
       }
     }
   }
 
-  void HandleCallInst(CallInst* callInst)
+  void HandleCallInst(CallInst *callInst)
   {
     // callinst
     Function *func = callInst->getCalledFunction();
@@ -111,28 +120,31 @@ struct FuncPtrPass : public ModulePass
       if (!(funcname == std::string("llvm.dbg.value")))
       {
         Push(funcname);
-        results.insert(std::pair<int,std::vector<std::string>>(line,funcNames));
-        errs() << "line:" << line << "\t" << func->getName() << "\n";
+        results.insert(std::pair<int, std::vector<std::string>>(line, funcNames));
       }
     }
     else
     { //calledFunction doesn't exits
-        /// Return the value actually being called or invoked.
-        Value* value =  callInst->getCalledValue();
-        if(PHINode* phiNode = dyn_cast<PHINode>(value)){
-          HandlePHINode(phiNode);
-        }
-        results.insert(std::pair<int,std::vector<std::string>>(line,funcNames));
+      /// Return the value actually being called or invoked.
+      Value *value = callInst->getCalledValue();
+      if (PHINode *phiNode = dyn_cast<PHINode>(value))
+      {
+        HandlePHINode(phiNode);
+      }
+      results.insert(std::pair<int, std::vector<std::string>>(line, funcNames));
     }
   }
 
-  void PrintResult(){
-    for(auto ii = results.begin(),ie = results.end();ii!=ie;ii++){
-      errs()<<ii->first<<" : ";
-      for(auto ji = ii->second.begin(),je = ii->second.end()-1;ji!=je;ji++){
-        errs()<< *ji << ", ";
+  void PrintResult()
+  {
+    for (auto ii = results.begin(), ie = results.end(); ii != ie; ii++)
+    {
+      errs() << ii->first << " : ";
+      for (auto ji = ii->second.begin(), je = ii->second.end() - 1; ji != je; ji++)
+      {
+        errs() << *ji << ", ";
       }
-      errs()<< *(ii->second.end()-1) << "\n";
+      errs() << *(ii->second.end() - 1) << "\n";
     }
   }
 
