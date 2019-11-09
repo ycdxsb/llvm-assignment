@@ -2,7 +2,7 @@
  * @Author: Chendong Yu 
  * @Date: 2019-11-08 16:05:57 
  * @Last Modified by: Chendong Yu
- * @Last Modified time: 2019-11-09 16:11:41
+ * @Last Modified time: 2019-11-10 01:35:42
  */
 //===- Hello.cpp - Example code from "Writing an LLVM Pass" ---------------===//
 //
@@ -161,8 +161,11 @@ struct FuncPtrPass : public ModulePass
             errs() << "here3"
                    << "\n";
             Push(func->getName());
-          }else if(Argument *argument = dyn_cast<Argument>(value)){
-            errs() << "here4" << "\n";
+          }
+          else if (Argument *argument = dyn_cast<Argument>(value))
+          {
+            errs() << "here4"
+                   << "\n";
             HandleArgument(argument);
           }
         }
@@ -170,12 +173,43 @@ struct FuncPtrPass : public ModulePass
     }
   }
 
+  void HandleCallInst(CallInst *callInst)
+  {
+    Function *func = callInst->getCalledFunction();
+    errs() << func->getName() << "\n";
+    if (func)
+    {
+      for (Function::iterator bi = func->begin(), be = func->end(); bi != be; bi++)
+      {
+        // for instruction in basicblock
+        for (BasicBlock::iterator ii = bi->begin(), ie = bi->end(); ii != ie; ii++)
+        {
+          Instruction *inst = dyn_cast<Instruction>(ii);
+          if (ReturnInst *retInst = dyn_cast<ReturnInst>(inst))
+          {
+            Value *value = retInst->getReturnValue();
+            if (Argument *argument = dyn_cast<Argument>(value))
+            {
+              HandleArgument(argument);
+            }
+            else if (PHINode *pHINode = dyn_cast<PHINode>(value))
+            {
+              HandlePHINode(pHINode);
+            }
+            else if (CallInst *callInst = dyn_cast<CallInst>(value))
+            {
+              HandleCallInst(callInst);
+            }
+          }
+        }
+      }
+    }
+  }
   void GetResult(CallInst *callInst)
   {
     // callinst
     Function *func = callInst->getCalledFunction();
     int line = callInst->getDebugLoc().getLine();
-    errs()<<"lines:"<<line<<"\n";
     funcNames.clear();
     if (func)
     { // calledFunction exits
@@ -200,8 +234,13 @@ struct FuncPtrPass : public ModulePass
       else if (Argument *argument = dyn_cast<Argument>(value))
       {
         HandleArgument(argument);
-      }else if(CallInst *callInst = dyn_cast<CallInst>(value)){
-        errs()<<"I am in"<< "\n";
+      }
+      else if (CallInst *callInst = dyn_cast<CallInst>(value))
+      {
+        errs() << "I am in"
+               << "\n";
+        errs() << "line: " << line << "\n";
+        HandleCallInst(callInst);
       }
       results.insert(std::pair<int, std::vector<std::string>>(line, funcNames));
     }
