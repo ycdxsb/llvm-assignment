@@ -2,7 +2,7 @@
  * @Author: Chendong Yu 
  * @Date: 2019-11-08 16:05:57 
  * @Last Modified by: Chendong Yu
- * @Last Modified time: 2019-11-10 01:35:42
+ * @Last Modified time: 2019-11-10 11:46:41
  */
 //===- Hello.cpp - Example code from "Writing an LLVM Pass" ---------------===//
 //
@@ -128,45 +128,110 @@ struct FuncPtrPass : public ModulePass
     }
   }
 
+  void HandleValue(Value *value)
+  {
+    if (PHINode *phiNode = dyn_cast<PHINode>(value))
+    {
+      errs() << "here2"
+             << "\n";
+      HandlePHINode(phiNode);
+    }
+    else if (Function *func = dyn_cast<Function>(value))
+    {
+      errs() << "here3"
+             << "\n";
+      Push(func->getName());
+    }
+    else if (Argument *argument = dyn_cast<Argument>(value))
+    {
+      errs() << "here4"
+             << "\n";
+      HandleArgument(argument);
+    }
+  }
+
   void HandleArgument(Argument *argument)
   {
     unsigned int arg_index = argument->getArgNo();
     Function *funcParent = argument->getParent();
     errs() << funcParent->getName() << "\n";
-    for (User *user : funcParent->users())
+    for (User *funcUser : funcParent->users())
     {
-      if (CallInst *callInst = dyn_cast<CallInst>(user))
+      if (CallInst *callInst = dyn_cast<CallInst>(funcUser))
       {
         // if argument at 3 , then foo(arg1,arg2) will be pass
         if (arg_index + 1 <= callInst->getNumArgOperands())
         {
-          errs() << "here"
-                 << "\n";
           Value *value = callInst->getArgOperand(arg_index);
           if (callInst->getCalledFunction() != funcParent)
           { // 递归问题
             Function *func = callInst->getCalledFunction();
+            for (Function::iterator bi = func->begin(), be = func->end(); bi != be; bi++)
+            {
+              // for instruction in basicblock
+              for (BasicBlock::iterator ii = bi->begin(), ie = bi->end(); ii != ie; ii++)
+              {
+                Instruction *inst = dyn_cast<Instruction>(ii);
+                if (ReturnInst *retInst = dyn_cast<ReturnInst>(inst))
+                {
+                  Value *v = retInst->getReturnValue();
+                  if (CallInst *call_inst = dyn_cast<CallInst>(v))
+                  {
+                    Value *value = call_inst->getArgOperand(arg_index);
+                    if (Argument *argument = dyn_cast<Argument>(value))
+                    {
+                      HandleArgument(argument);
+                    }
+                  }
+                }
+              }
+            }
+          }
+          else
+          {
+            HandleValue(value);
+          }
+        }
+      }
+      else if (PHINode *phiNode = dyn_cast<PHINode>(funcUser))
+      {
+        for (User *phiUser : phiNode->users())
+        {
+          if (CallInst *callInst = dyn_cast<CallInst>(phiUser))
+          {
+            if (arg_index + 1 <= callInst->getNumArgOperands())
+            {
+              Value *value = callInst->getArgOperand(arg_index);
+              HandleValue(value);
+            }
+          }
+        }
+      }
+    }
+  }
 
-            errs() << "here1"
-                   << "\n";
-          }
-          else if (PHINode *phiNode = dyn_cast<PHINode>(value))
+  void HandleFunction(Function *func)
+  {
+    for (Function::iterator bi = func->begin(), be = func->end(); bi != be; bi++)
+    {
+      // for instruction in basicblock
+      for (BasicBlock::iterator ii = bi->begin(), ie = bi->end(); ii != ie; ii++)
+      {
+        Instruction *inst = dyn_cast<Instruction>(ii);
+        if (ReturnInst *retInst = dyn_cast<ReturnInst>(inst))
+        {
+          Value *value = retInst->getReturnValue();
+          if (Argument *argument = dyn_cast<Argument>(value))
           {
-            errs() << "here2"
-                   << "\n";
-            HandlePHINode(phiNode);
-          }
-          else if (Function *func = dyn_cast<Function>(value))
-          {
-            errs() << "here3"
-                   << "\n";
-            Push(func->getName());
-          }
-          else if (Argument *argument = dyn_cast<Argument>(value))
-          {
-            errs() << "here4"
-                   << "\n";
             HandleArgument(argument);
+          }
+          else if (PHINode *pHINode = dyn_cast<PHINode>(value))
+          {
+            HandlePHINode(pHINode);
+          }
+          else if (CallInst *callInst = dyn_cast<CallInst>(value))
+          {
+            HandleCallInst(callInst);
           }
         }
       }
@@ -176,30 +241,21 @@ struct FuncPtrPass : public ModulePass
   void HandleCallInst(CallInst *callInst)
   {
     Function *func = callInst->getCalledFunction();
-    errs() << func->getName() << "\n";
     if (func)
     {
-      for (Function::iterator bi = func->begin(), be = func->end(); bi != be; bi++)
+      errs() << func->getName() << "\n";
+      HandleFunction(func);
+    }
+    else
+    {
+      Value *value = callInst->getCalledValue();
+      if (PHINode *phiNode = dyn_cast<PHINode>(value))
       {
-        // for instruction in basicblock
-        for (BasicBlock::iterator ii = bi->begin(), ie = bi->end(); ii != ie; ii++)
+        for (Value *value : phiNode->incoming_values())
         {
-          Instruction *inst = dyn_cast<Instruction>(ii);
-          if (ReturnInst *retInst = dyn_cast<ReturnInst>(inst))
+          if (Function *func = dyn_cast<Function>(value))
           {
-            Value *value = retInst->getReturnValue();
-            if (Argument *argument = dyn_cast<Argument>(value))
-            {
-              HandleArgument(argument);
-            }
-            else if (PHINode *pHINode = dyn_cast<PHINode>(value))
-            {
-              HandlePHINode(pHINode);
-            }
-            else if (CallInst *callInst = dyn_cast<CallInst>(value))
-            {
-              HandleCallInst(callInst);
-            }
+            HandleFunction(func);
           }
         }
       }
@@ -237,13 +293,11 @@ struct FuncPtrPass : public ModulePass
       }
       else if (CallInst *callInst = dyn_cast<CallInst>(value))
       {
-        errs() << "I am in"
-               << "\n";
-        errs() << "line: " << line << "\n";
         HandleCallInst(callInst);
       }
       results.insert(std::pair<int, std::vector<std::string>>(line, funcNames));
     }
+    //PrintResult();
   }
 
   bool runOnModule(Module &M) override
