@@ -132,20 +132,14 @@ struct FuncPtrPass : public ModulePass
   {
     if (PHINode *phiNode = dyn_cast<PHINode>(value))
     {
-      errs() << "here2"
-             << "\n";
       HandlePHINode(phiNode);
     }
     else if (Function *func = dyn_cast<Function>(value))
     {
-      errs() << "here3"
-             << "\n";
       Push(func->getName());
     }
     else if (Argument *argument = dyn_cast<Argument>(value))
     {
-      errs() << "here4"
-             << "\n";
       HandleArgument(argument);
     }
   }
@@ -154,7 +148,7 @@ struct FuncPtrPass : public ModulePass
   {
     unsigned int arg_index = argument->getArgNo();
     Function *funcParent = argument->getParent();
-    errs() << funcParent->getName() << "\n";
+    //errs() << funcParent->getName() << "\n";
     for (User *funcUser : funcParent->users())
     {
       if (CallInst *callInst = dyn_cast<CallInst>(funcUser))
@@ -275,8 +269,15 @@ struct FuncPtrPass : public ModulePass
       std::string funcname = func->getName();
       if (!(funcname == std::string("llvm.dbg.value")))
       {
+        //errs()<<"here:"<<funcname<<"\n";
         Push(funcname);
-        results.insert(std::pair<int, std::vector<std::string>>(line, funcNames));
+        if(results.find(line)==results.end()){
+            results.insert(std::pair<int, std::vector<std::string>>(line, funcNames));
+        }else{
+          auto i=results.find(line);
+          i->second.push_back(funcname);
+        }
+        
       }
     }
     else
@@ -302,8 +303,8 @@ struct FuncPtrPass : public ModulePass
 
   bool runOnModule(Module &M) override
   {
-    errs() << "Hello: ";
-    errs().write_escaped(M.getName()) << '\n';
+    //errs() << "Hello: ";
+    //errs().write_escaped(M.getName()) << '\n';
     //M.dump();
     //M.print(llvm::errs(), nullptr);
     //errs() << "------------------------------\n";
