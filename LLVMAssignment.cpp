@@ -255,6 +255,13 @@ struct FuncPtrPass : public ModulePass
       }
     }
   }
+/*
+  void HandleCmpInst(CmpInst *cmpInst){
+    if (cmpInst->getPredicate() != CmpInst::ICMP_NE){
+      errs()<<"12"<<"\n";
+    }
+  }
+*/
   void GetResult(CallInst *callInst)
   {
     // callinst
@@ -318,6 +325,10 @@ struct FuncPtrPass : public ModulePass
         for (BasicBlock::iterator ii = bi->begin(), ie = bi->end(); ii != ie; ii++)
         {
           Instruction *inst = dyn_cast<Instruction>(ii);
+          /*
+          if( CmpInst *cmpInst = dyn_cast<CmpInst>(inst)){
+              HandleCmpInst(cmpInst);
+          }*/
           if (CallInst *callInst = dyn_cast<CallInst>(inst))
           {
             GetResult(callInst);
