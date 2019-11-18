@@ -255,7 +255,7 @@ struct FuncPtrPass : public ModulePass
       }
     }
   }
-/*
+  /*
   void HandleCmpInst(CmpInst *cmpInst){
     if (cmpInst->getPredicate() != CmpInst::ICMP_NE){
       errs()<<"12"<<"\n";
@@ -278,13 +278,15 @@ struct FuncPtrPass : public ModulePass
       {
         //errs()<<"here:"<<funcname<<"\n";
         Push(funcname);
-        if(results.find(line)==results.end()){
-            results.insert(std::pair<int, std::vector<std::string>>(line, funcNames));
-        }else{
-          auto i=results.find(line);
+        if (results.find(line) == results.end())
+        {
+          results.insert(std::pair<int, std::vector<std::string>>(line, funcNames));
+        }
+        else
+        {
+          auto i = results.find(line);
           i->second.push_back(funcname);
         }
-        
       }
     }
     else
